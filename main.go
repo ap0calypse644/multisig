@@ -47,7 +47,7 @@ func main() {
 	}
 }
 
-func cmdGenerate(cmd *cobra.Command, args []string) error {
+func cmdPush(cmd *cobra.Command, args []string) error {
 	chainName := args[0]
 	keyName := args[1]
 
