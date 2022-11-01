@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -742,8 +744,10 @@ func cmdSign(cobraCmd *cobra.Command, args []string) error {
 	chainID := signData.ChainID
 	unsignedFileName := unsignedFile.Name()
 	backend := conf.KeyringBackend
+	password := conf.KeyringPassword
 	user := conf.User
 
+	fmt.Println(password)
 	// gaiad tx sign unsigned.json --multisig <address> --from <from> --account-number <acc> --sequence <seq> --chain-id <id> --offline
 	cmdArgs := []string{"tx", "sign", unsignedFileName, "--multisig", address, "--from", from,
 		"--account-number", accNum, "--sequence", seqNum, "--chain-id", chainID,
@@ -752,20 +756,52 @@ func cmdSign(cobraCmd *cobra.Command, args []string) error {
 	}
 	cmdArgs = append(cmdArgs, "--keyring-backend", backend)
 	cmd := exec.Command(binary, cmdArgs...)
-	b, err := cmd.CombinedOutput()
+
+	if cmd.Stdout != nil {
+		return errors.New("exec: Stdout already set")
+	}
+	if cmd.Stderr != nil {
+		return errors.New("exec: Stderr already set")
+	}
+
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		panic(err)
+	}
+
+	var b bytes.Buffer
+	cmd.Stdout = &b
+	cmd.Stderr = &b
+
+	if err := cmd.Start(); err != nil {
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println("call failed")
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println(cmd)
-		fmt.Println(string(b))
+		fmt.Println(err)
 		return err
 	}
+
+	_, err = stdin.Write([]byte(password))
+	if err != nil {
+		panic(err)
+	}
+
+	// b, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println("call failed")
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println(cmd)
+	// 	fmt.Println(string(b))
+	// 	return err
+	// }
+
 	fmt.Println(cmd)
-	fmt.Println(string(b))
+	fmt.Println(b.String())
 
 	// upload the signature as <user>.json
-	if err := awsUpload(sess, conf.AWS, txDir, fmt.Sprintf("%s.json", user), b); err != nil {
+	if err := awsUpload(sess, conf.AWS, txDir, fmt.Sprintf("%s.json", user), b.Bytes()); err != nil {
 		return err
 	}
 
@@ -888,6 +924,8 @@ func cmdBroadcast(cobraCmd *cobra.Command, args []string) error {
 	chainID := signData.ChainID
 	unsignedFileName := unsignedJSON
 	backend := conf.KeyringBackend
+	password := conf.KeyringPassword
+
 	// TODO: can I used the address directly here instead ?
 	localMultisigName := key.LocalName
 
@@ -899,19 +937,52 @@ func cmdBroadcast(cobraCmd *cobra.Command, args []string) error {
 	cmdArgs = append(cmdArgs, "--account-number", accNum, "--sequence", seqNum, "--chain-id", chainID, "--offline")
 	cmdArgs = append(cmdArgs, "--keyring-backend", backend) // sigh
 	cmd := exec.Command(binary, cmdArgs...)
-	b, err := cmd.CombinedOutput()
+	fmt.Println(password)
+
+	if cmd.Stdout != nil {
+		return errors.New("exec: Stdout already set")
+	}
+	if cmd.Stderr != nil {
+		return errors.New("exec: Stderr already set")
+	}
+
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		panic(err)
+	}
+
+	var b bytes.Buffer
+	cmd.Stdout = &b
+	cmd.Stderr = &b
+
+	if err := cmd.Start(); err != nil {
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println("call failed")
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println(cmd)
-		fmt.Println(string(b))
+		fmt.Println(err)
 		return err
 	}
-	fmt.Println(cmd)
-	fmt.Println(string(b))
 
-	if err := ioutil.WriteFile(signedJSON, b, 0666); err != nil {
+	_, err = stdin.Write([]byte(password))
+	if err != nil {
+		panic(err)
+	}
+
+	// b, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println("call failed")
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println(cmd)
+	// 	fmt.Println(string(b))
+	// 	return err
+	// }
+
+	fmt.Println(cmd)
+	fmt.Println(b.String())
+
+	if err := ioutil.WriteFile(signedJSON, b.Bytes(), 0666); err != nil {
 		return err
 	}
 
@@ -925,19 +996,50 @@ func cmdBroadcast(cobraCmd *cobra.Command, args []string) error {
 	// 	  otherwise the tx might still fail when it gets executed but we will delete it
 	cmdArgs = []string{"tx", "broadcast", signedJSON, "--node", nodeAddress}
 	cmd = exec.Command(binary, cmdArgs...)
-	b, err = cmd.CombinedOutput()
+	if cmd.Stdout != nil {
+		return errors.New("exec: Stdout already set")
+	}
+	if cmd.Stderr != nil {
+		return errors.New("exec: Stderr already set")
+	}
+
+	stdin, err = cmd.StdinPipe()
 	if err != nil {
+		panic(err)
+	}
+
+	var b2 bytes.Buffer
+	cmd.Stdout = &b2
+	cmd.Stderr = &b2
+
+	if err := cmd.Start(); err != nil {
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println("call failed")
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println(cmd)
-		fmt.Println(string(b))
+		fmt.Println(err)
 		return err
 	}
-	fmt.Println(cmd)
-	fmt.Println(string(b))
 
-	code, hash, err := parseTxResult(b)
+	_, err = stdin.Write([]byte(password))
+	if err != nil {
+		panic(err)
+	}
+
+	// b, err := cmd.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println("call failed")
+	// 	fmt.Println("-----------------------------------------------------------------")
+	// 	fmt.Println(cmd)
+	// 	fmt.Println(string(b))
+	// 	return err
+	// }
+
+	fmt.Println(cmd)
+	fmt.Println(b.String())
+
+	code, hash, err := parseTxResult(b2.Bytes())
 	if err != nil {
 		return err
 	}

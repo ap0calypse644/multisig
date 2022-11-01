@@ -39,13 +39,14 @@ type AWS struct {
 
 // Config file
 type Config struct {
-	User           string
-	KeyringBackend string
-	DefaultFee     int64
-	DefaultGas     int64
-	AWS            AWS
-	Keys           []Key
-	Chains         []Chain
+	User            string
+	KeyringBackend  string
+	KeyringPassword string
+	DefaultFee      int64
+	DefaultGas      int64
+	AWS             AWS
+	Keys            []Key
+	Chains          []Chain
 }
 
 func (c *Config) GetChain(name string) (Chain, bool) {
